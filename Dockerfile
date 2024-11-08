@@ -1,15 +1,29 @@
-FROM golang:1.21-alpine AS build
+# stage 1
+FROM node:19-alpine as build
 
+# change into a folder called /app
+WORKDIR /app
+
+# only copy package.json
+COPY package.json .
+
+# download the project dependencies
+RUN npm install
+
+# copy everything from the react app folder to the /app folder in the container
 COPY . .
 
-ENV GOPATH=/tmp
+# package up the react project in the /app directory
+RUN npm run build
 
-RUN go install
 
-RUN go build -o /bin/app
+#stage 2
+FROM nginx:1.23-alpine
+COPY --from=build /app/build /usr/share/nginx/html
 
-FROM alpine
+COPY nginx/nginx.conf /etc/nginx/conf.d/default.conf
 
-COPY --from=build /bin/app ./app
+EXPOSE 80
 
-ENTRYPOINT ["./app"]
+#CMD ["npm", "run", "start"]
+CMD ["nginx", "-g", "daemon off;"]
